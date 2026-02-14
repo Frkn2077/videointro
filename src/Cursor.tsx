@@ -1,43 +1,55 @@
 import React from 'react';
 import { interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
 
-export const Cursor: React.FC = () => {
+interface CursorProps {
+    startX?: number;
+    startY?: number;
+    endX?: number;
+    endY?: number;
+    startFrame?: number;
+    duration?: number;
+    clickFrameOffset?: number; // How many frames after movement to click
+    opacityDelay?: number; // How many frames after startFrame to fade out
+    showConfetti?: boolean; // Whether to trigger click animation
+}
+
+export const Cursor: React.FC<CursorProps> = ({
+    startX = 800,
+    startY = 1800,
+    endX = 540,
+    endY = 1650,
+    startFrame = 60,
+    duration = 60,
+    clickFrameOffset = 70,
+    opacityDelay = 150,
+}) => {
     const frame = useCurrentFrame();
-    const { fps } = useVideoConfig();
 
-    // Animate cursor movement
-    // Start off-screen (bottom-right), move to button center, click, then move away
-
-    const duration = 150; // duration of cursor sequence in frames
-    const startFrame = 60; // start after 2 seconds
-
-    const progress = interpolate(frame, [startFrame, startFrame + 60], [0, 1], {
+    const progress = interpolate(frame, [startFrame, startFrame + duration], [0, 1], {
         extrapolateLeft: 'clamp',
         extrapolateRight: 'clamp',
     });
-
-    // Approximate button position (center bottom)
-    // Screen is 1080x1920. Button is roughly at y=1500
-
-    const startX = 800;
-    const startY = 1800;
-    const endX = 540; // Center X (ish)
-    const endY = 1650; // Center Y of button (Lowered further)
 
     const x = interpolate(progress, [0, 1], [startX, endX]);
     const y = interpolate(progress, [0, 1], [startY, endY]);
 
     // Click animation (scale down)
-    const clickFrame = startFrame + 70;
+    const clickFrame = startFrame + clickFrameOffset;
     const scale = interpolate(frame, [clickFrame, clickFrame + 5, clickFrame + 10], [1, 0.8, 1], {
         extrapolateLeft: 'clamp',
         extrapolateRight: 'clamp'
     });
 
-    const opacity = interpolate(frame, [startFrame + 120, startFrame + 150], [1, 0], {
-        extrapolateLeft: 'clamp',
-        extrapolateRight: 'clamp'
-    });
+    // Only fade out if opacityDelay is set (and reasonable)
+    const opacity = interpolate(
+        frame,
+        [startFrame + opacityDelay, startFrame + opacityDelay + 30],
+        [1, 0],
+        {
+            extrapolateLeft: 'clamp',
+            extrapolateRight: 'clamp'
+        }
+    );
 
     return (
         <div
@@ -47,7 +59,7 @@ export const Cursor: React.FC = () => {
                 top: 0,
                 transform: `translateX(${x}px) translateY(${y}px) scale(${scale})`,
                 opacity: opacity,
-                zIndex: 100,
+                zIndex: 1000, // Ensure high z-index
                 pointerEvents: 'none',
             }}
         >
@@ -57,6 +69,7 @@ export const Cursor: React.FC = () => {
                 viewBox="0 0 24 24"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
+                style={{ filter: 'drop-shadow(0px 4px 4px rgba(0,0,0,0.25))' }}
             >
                 <path
                     d="M3 3L10.07 19.97L12.58 12.58L19.97 10.07L3 3Z"
